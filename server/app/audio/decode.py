@@ -29,6 +29,41 @@ def _cleanup(path: Path) -> None:
         pass
 
 
+def _probe_input_channels(ffprobe: str, input_path: Path) -> int:
+    probe = subprocess.run(
+        [
+            ffprobe,
+            "-v",
+            "error",
+            "-select_streams",
+            "a:0",
+            "-show_entries",
+            "stream=channels",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(input_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    try:
+        if probe.returncode != 0:
+            raise ValueError(probe.stderr.strip() or "ffprobe failed")
+        channels = int(probe.stdout.strip())
+        if channels <= 0:
+            raise ValueError("audio stream has no channels")
+        return channels
+    except ValueError as exc:
+        raise AudioDecodeError(f"Could not inspect input audio channels: {exc}") from exc
+
+
+def _arithmetic_mean_pan_filter(channels: int) -> str:
+    coefficient = 1.0 / channels
+    terms = "+".join(f"{coefficient:.12g}*c{index}" for index in range(channels))
+    return f"pan=mono|c0={terms}"
+
+
 def decode_audio(input_path: Path, output_path: Path) -> DecodedAudio:
     input_path = Path(input_path)
     output_path = Path(output_path)
@@ -38,6 +73,7 @@ def decode_audio(input_path: Path, output_path: Path) -> DecodedAudio:
 
     ffmpeg = _tool("ffmpeg")
     ffprobe = _tool("ffprobe")
+    input_channels = _probe_input_channels(ffprobe, input_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     _cleanup(output_path)
 
@@ -51,8 +87,8 @@ def decode_audio(input_path: Path, output_path: Path) -> DecodedAudio:
             "-i",
             str(input_path),
             "-vn",
-            "-ac",
-            str(CANONICAL_CHANNELS),
+            "-af",
+            _arithmetic_mean_pan_filter(input_channels),
             "-ar",
             str(CANONICAL_SAMPLE_RATE),
             "-c:a",

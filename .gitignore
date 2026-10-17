@@ -16,3 +16,10 @@
 local.properties
 .env
 debug.keystore
+
+# Don't Fret web rebuild runtime/model artifacts
+server/models/
+*.onnx
+server/.venv/
+web/node_modules/
+web/.next/
