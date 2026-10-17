@@ -85,4 +85,39 @@ test("upload to sheet, easy guitar, correction and follow position", async ({ pa
   await page.getByRole("button", { name: "Follow" }).click();
   await page.getByLabel("Playback position").fill("6.2");
   await expect(page.getByText("Now: Em")).toBeVisible();
+
+  await page.route("**/analysis-api/projects", async (route) => {
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        projectId: "project-fixture",
+        sourceJobId: "job-1",
+        schemaVersion: "dont-fret.project.v1",
+        analysisResult: finishedResult,
+        corrections: {},
+      }),
+    });
+  });
+  await page.route("**/analysis-api/projects/project-fixture/corrections", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        projectId: "project-fixture",
+        sourceJobId: "job-1",
+        schemaVersion: "dont-fret.project.v1",
+        analysisResult: finishedResult,
+        corrections: { "0": "Bb7" },
+      }),
+    });
+  });
+  await page.getByRole("button", { name: "Save project" }).click();
+  await expect(page.getByText(/Project saved/)).toBeVisible();
+
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "CSV" }).click();
+  const csv = await download;
+  expect(csv.suggestedFilename()).toMatch(/_dont-fret\.csv$/);
+
 });

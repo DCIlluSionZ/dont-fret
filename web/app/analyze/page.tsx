@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AudioDropzone } from "../../components/upload/AudioDropzone";
 import { FollowPlayer } from "../../components/player/FollowPlayer";
 import { ChordSheet } from "../../components/sheet/ChordSheet";
-import { fetchJob, uploadTrack } from "../../lib/api";
+import { createProject, fetchJob, getProject, saveCorrections, uploadTrack } from "../../lib/api";
+import { exportAnalysisJson, exportChordSheetText, exportChordsCsv } from "../../lib/exports";
 import type { AnalysisMode, AnalysisResult } from "../../lib/api";
 import { rankCapoOptions } from "../../lib/music/capo";
 import { transposeChord } from "../../lib/music/chords";
@@ -30,6 +31,9 @@ export default function AnalyzePage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [corrections, setCorrections] = useState<Record<number, string>>({});
   const [easy, setEasy] = useState(false);
   const [view, setView] = useState<View>("sheet");
@@ -51,6 +55,29 @@ export default function AnalyzePage() {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  useEffect(() => {
+    const savedId = new URLSearchParams(window.location.search).get("project");
+    if (!savedId) return;
+    const controller = new AbortController();
+    getProject(savedId, controller.signal)
+      .then((saved) => {
+        if (controller.signal.aborted) return;
+        setResult(saved.analysisResult);
+        setJobId(saved.sourceJobId);
+        setProjectId(saved.projectId);
+        setCorrections(saved.corrections);
+        setFile(null);
+        setPhase("complete");
+        setSaveState("saved");
+      })
+      .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
+        setError(reason instanceof Error ? reason.message : "Could not open saved project.");
+        setPhase("failed");
+      });
+    return () => controller.abort();
+  }, []);
+
   const rawChords = useMemo(
     () => result?.chords.map((_, index) => soundingLabel(result, index, corrections)) ?? [],
     [result, corrections],
@@ -70,6 +97,10 @@ export default function AnalyzePage() {
   function chooseFile(next: File | null) {
     abortRef.current?.abort();
     setFile(next);
+    setJobId(null);
+    setProjectId(null);
+    setSaveState("idle");
+    if (window.location.search) window.history.replaceState(null, "", "/analyze");
     setResult(null);
     setCorrections({});
     setPosition(0);
@@ -85,19 +116,23 @@ export default function AnalyzePage() {
     abortRef.current = controller;
     setPhase("uploading");
     setResult(null);
+    setJobId(null);
+    setProjectId(null);
+    setSaveState("idle");
     setError(null);
     setCorrections({});
     setPosition(0);
     setEasy(false);
     setView("sheet");
     try {
-      const jobId = await uploadTrack(file, mode, controller.signal);
+      const nextJobId = await uploadTrack(file, mode, controller.signal);
       if (controller.signal.aborted) return;
+      setJobId(nextJobId);
       setPhase("analysing");
       for (let count = 0; count < MAX_POLLS; count += 1) {
         await pause(POLL_INTERVAL_MS);
         if (controller.signal.aborted) return;
-        const job = await fetchJob(jobId, controller.signal);
+        const job = await fetchJob(nextJobId, controller.signal);
         if (job.status === "failed") {
           throw new Error(job.error || "Analysis failed without details.");
         }
@@ -130,7 +165,46 @@ export default function AnalyzePage() {
     const next = editText.trim();
     if (!next || next.length > 32) return;
     setCorrections((previous) => ({ ...previous, [editing]: next }));
+    setSaveState("idle");
     setEditing(null);
+  }
+
+  async function saveProject() {
+    if (!result || !jobId) return;
+    setSaveState("saving");
+    try {
+      const id = projectId ?? (await createProject(jobId)).projectId;
+      setProjectId(id);
+      await saveCorrections(id, corrections);
+      window.history.replaceState(null, "", "/analyze?project=" + encodeURIComponent(id));
+      setSaveState("saved");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not save the project.");
+      setSaveState("error");
+    }
+  }
+
+  function download(format: "json" | "csv" | "txt") {
+    if (!result) return;
+    const content = format === "json"
+      ? exportAnalysisJson(result, corrections)
+      : format === "csv"
+        ? exportChordsCsv(result, corrections)
+        : exportChordSheetText(
+            result,
+            corrections,
+            easy && recommendedCapo ? { capoFret: recommendedCapo.capoFret } : {},
+          );
+    const mime = format === "json" ? "application/json" : format === "csv" ? "text/csv" : "text/plain";
+    const name = result.track.title.replace(/[^a-zA-Z0-9_.-]+/g, "_").slice(0, 70) || "song";
+    const url = URL.createObjectURL(new Blob([content], { type: mime + ";charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = name + "_dont-fret." + format;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
   }
 
   const busy = phase === "uploading" || phase === "analysing";
@@ -191,6 +265,17 @@ export default function AnalyzePage() {
                 </div>
                 <button className="print-action" type="button" onClick={() => window.print()}>Print sheet</button>
               </div>
+              <div className="export-toolbar">
+                <button className="save-action" type="button" onClick={() => void saveProject()} disabled={!jobId || saveState === "saving"}>
+                  {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved project" : "Save project"}
+                </button>
+                <span>Export:</span>
+                <button type="button" onClick={() => download("json")}>JSON</button>
+                <button type="button" onClick={() => download("csv")}>CSV</button>
+                <button type="button" onClick={() => download("txt")}>Text sheet</button>
+              </div>
+              {saveState === "saved" && <p className="saved-note">Project saved. This URL reopens the corrected sheet; upload the audio again for playback.</p>}
+              {saveState === "error" && <p className="result-warning" role="alert">{error}</p>}
               {easy && recommendedCapo && (
                 <p className="capo-hint">Capo {recommendedCapo.capoFret} · Play these shapes to keep the original sounding key.</p>
               )}
@@ -226,7 +311,7 @@ export default function AnalyzePage() {
                   />
                   <button className="primary-action" type="submit">Save correction</button>
                   <button className="secondary-action" type="button" onClick={() => setEditing(null)}>Cancel</button>
-                  <small>Corrections update this sheet immediately. Saving projects permanently is the next milestone.</small>
+                  <small>Corrections update this sheet immediately. Select Save project to preserve them.</small>
                 </form>
               )}
             </>

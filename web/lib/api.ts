@@ -91,3 +91,51 @@ export async function fetchJob(jobId: string, signal?: AbortSignal): Promise<Ana
   }
   return payload as AnalysisJob;
 }
+
+
+export interface SavedProject {
+  projectId: string;
+  sourceJobId: string;
+  schemaVersion: "dont-fret.project.v1";
+  analysisResult: AnalysisResult;
+  corrections: Record<string, string>;
+}
+
+function asSavedProject(payload: unknown): SavedProject {
+  if (!payload || typeof payload !== "object" || !("projectId" in payload) || !("analysisResult" in payload)) {
+    throw new Error("The server returned an invalid saved project.");
+  }
+  return payload as SavedProject;
+}
+
+export async function createProject(jobId: string): Promise<SavedProject> {
+  const response = await fetch("/analysis-api/projects", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jobId }),
+  });
+  return asSavedProject(await decodeResponse(response));
+}
+
+export async function getProject(projectId: string, signal?: AbortSignal): Promise<SavedProject> {
+  const response = await fetch("/analysis-api/projects/" + encodeURIComponent(projectId), {
+    cache: "no-store",
+    signal,
+  });
+  return asSavedProject(await decodeResponse(response));
+}
+
+export async function saveCorrections(
+  projectId: string,
+  corrections: Record<number, string>,
+): Promise<SavedProject> {
+  const response = await fetch(
+    "/analysis-api/projects/" + encodeURIComponent(projectId) + "/corrections",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ corrections }),
+    },
+  );
+  return asSavedProject(await decodeResponse(response));
+}
