@@ -43,11 +43,14 @@ jobs:
       - name: Install web dependencies
         if: ${{ hashFiles('web/package.json') != '' }}
         run: cd web && npm install
-      - name: Run web tests
+      - name: Run web unit tests
         if: ${{ hashFiles('web/package.json') != '' }}
         run: cd web && npm test
+      - name: Install Playwright Chromium
+        if: ${{ hashFiles('web/playwright.config.ts') != '' }}
+        run: cd web && npx playwright install --with-deps chromium
       - name: Run browser flow
-        if: ${{ hashFiles('web/package.json') != '' }}
+        if: ${{ hashFiles('web/playwright.config.ts') != '' }}
         run: cd web && npm run e2e
       - name: Build web app
         if: ${{ hashFiles('web/package.json') != '' }}
