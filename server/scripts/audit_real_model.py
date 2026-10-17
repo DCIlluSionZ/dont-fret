@@ -10,15 +10,20 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import tempfile
+import time
 from collections import Counter
 from pathlib import Path
 
 import numpy as np
+import soundfile as sf
+from fastapi.testclient import TestClient
 
 from app.analysis.beats import estimate_beat_grid
 from app.analysis.key import infer_key
 from app.analysis.onnx_engine import OnnxChordEngine
 from app.analysis.smoothing import smooth_to_beats
+from app.main import create_app
 
 SR = 22050
 DURATION_PER_CHORD = 3.0
@@ -110,6 +115,75 @@ def main() -> int:
         "segmentResults": samples_per_label,
     }
     print("REAL_MODEL_AUDIT_JSON=" + json.dumps(metrics, separators=(",", ":")))
+
+    # Full HTTP -> bounded upload -> FFmpeg decode -> real ONNX inference ->
+    # persisted job -> project correction test, with no private audio involved.
+    with tempfile.TemporaryDirectory(prefix="dont-fret-real-audit-") as workdir:
+        root = Path(workdir)
+        wav = root / "synthetic.wav"
+        sf.write(wav, audio, SR, subtype="PCM_16")
+        app = create_app(analysis_engine=engine, job_root=root / "jobs")
+        with TestClient(app) as client:
+            accepted = client.post(
+                "/api/analyze",
+                files={"file": ("synthetic.wav", wav.read_bytes(), "audio/wav")},
+                data={"mode": "normal"},
+            )
+            assert accepted.status_code == 202, accepted.text
+            job_id = accepted.json()["jobId"]
+            deadline = time.monotonic() + 120
+            job = None
+            while time.monotonic() < deadline:
+                status = client.get("/api/jobs/" + job_id)
+                assert status.status_code == 200, status.text
+                job = status.json()
+                if job["status"] in {"complete", "failed"}:
+                    break
+                time.sleep(0.1)
+            assert job and job["status"] == "complete", job
+            result = job["result"]
+            assert result["schemaVersion"] == "dont-fret.analysis.v1"
+            assert result["analysis"]["sampleRate"] == SR
+            assert result["analysis"]["engineVersion"] == evidence.engine_version
+            assert len(result["chords"]) > 0
+
+            created = client.post("/api/projects", json={"jobId": job_id})
+            assert created.status_code == 201, created.text
+            project_id = created.json()["projectId"]
+            raw_first = result["chords"][0]["rawChord"]
+            edited = client.patch(
+                f"/api/projects/{project_id}/corrections",
+                json={"corrections": {"0": "Cmaj7"}},
+            )
+            assert edited.status_code == 200, edited.text
+            reopened = client.get(f"/api/projects/{project_id}").json()
+            assert reopened["corrections"] == {"0": "Cmaj7"}
+            assert reopened["analysisResult"]["chords"][0]["rawChord"] == raw_first
+
+            print(
+                "REAL_MODEL_FULL_STACK_JSON="
+                + json.dumps(
+                    {
+                        "httpStatus": accepted.status_code,
+                        "jobStatus": job["status"],
+                        "source": "synthesized-harmonic-triads",
+                        "durationSec": result["track"]["durationSec"],
+                        "key": result["analysis"]["key"],
+                        "bpm": result["analysis"]["bpm"],
+                        "chordCount": len(result["chords"]),
+                        "chordSequence": [
+                            {"startSec": round(chord["startSec"], 2),
+                             "chord": chord["chord"],
+                             "lowConfidence": chord["isLowConfidence"]}
+                            for chord in result["chords"]
+                        ],
+                        "projectCorrectionPreservesRaw": True,
+                    },
+                    separators=(",", ":"),
+                ),
+                flush=True,
+            )
+
     return 0
 
 
