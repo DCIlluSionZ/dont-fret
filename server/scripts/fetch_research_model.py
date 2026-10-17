@@ -37,7 +37,11 @@ def fetch_model_file(root: Path, name: str, expected_hash: str, expected_size: i
                 size += len(block)
                 digest.update(block)
         if size != expected_size or digest.hexdigest() != expected_hash:
-            raise ValueError("Model artifact changed. Verify the source before approving a new checksum: " + name)
+            raise ValueError(
+                f"Model artifact rejected for {name}: expected {expected_size} bytes / "
+                f"{expected_hash}, received {size} bytes / {digest.hexdigest()}. "
+                "No artifact was installed."
+            )
         temp.replace(destination)
         destination.chmod(0o600)
         print("Verified and saved", destination)
