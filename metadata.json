@@ -1,0 +1,10 @@
+{
+  "name": "Don't Fret",
+  "description": "Audio-to-guitar song sheet analyzer, deterministic capo & chord calculator, and Suno 6 songwriting workshop by DCI.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

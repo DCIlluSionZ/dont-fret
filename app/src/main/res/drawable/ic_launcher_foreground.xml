@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Outer subtle glow ring inside safe zone -->
+    <path
+        android:pathData="M54,23 A31,31 0 1,1 53.99,23 Z"
+        android:strokeWidth="1.2"
+        android:strokeColor="#3338BDF8"
+        android:fillColor="#00000000" />
+
+    <!-- Stylized Guitar Pick Silhouette (representing Guitar Mode & Playable Song Sheet) -->
+    <path
+        android:pathData="M54,24 C71,24 80,34 80,49 C80,66 64,80 54,85 C44,80 28,66 28,49 C28,34 37,24 54,24 Z"
+        android:strokeWidth="2.5">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="30"
+                android:startY="26"
+                android:endX="78"
+                android:endY="84"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF0F1E42" />
+                <item android:offset="0.55" android:color="#FF1E1B4B" />
+                <item android:offset="1.0" android:color="#FF091026" />
+            </gradient>
+        </aapt:attr>
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="28"
+                android:startY="24"
+                android:endX="80"
+                android:endY="85"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF38BDF8" />
+                <item android:offset="0.5" android:color="#FFA855F7" />
+                <item android:offset="1.0" android:color="#FFFBBF24" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Left Audio Soundwave Bars (Audio In) -->
+    <path
+        android:pathData="M34,46 L34,54 M38,41 L38,59 M42,44 L42,56"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:strokeColor="#FF38BDF8" />
+
+    <!-- Right Audio Soundwave Bars -->
+    <path
+        android:pathData="M66,44 L66,56 M70,41 L70,59 M74,46 L74,54"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:strokeColor="#FFA855F7" />
+
+    <!-- Center Guitar Fretboard Grid (Nut + Frets + Strings) -->
+    <!-- Ivory Guitar Nut -->
+    <path
+        android:pathData="M46,34 L62,34"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:strokeColor="#FFF8FAFC" />
+
+    <!-- Horizontal Fret Wires -->
+    <path
+        android:pathData="M46,43 L62,43 M46,52 L62,52 M46,61 L62,61"
+        android:strokeWidth="1.4"
+        android:strokeLineCap="round"
+        android:strokeColor="#8894A3B8" />
+
+    <!-- Vertical Guitar Strings -->
+    <path
+        android:pathData="M47,34 L47,68 M51.6,34 L51.6,68 M56.3,34 L56.3,68 M61,34 L61,68"
+        android:strokeWidth="1.4"
+        android:strokeLineCap="round"
+        android:strokeColor="#CCCBD5E1" />
+
+    <!-- Glowing Gold Chord Voicing Finger Dots on the Fretboard -->
+    <path
+        android:pathData="M51.6,38.5 m-2.8,0 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0"
+        android:fillColor="#FFFBBF24" />
+    <path
+        android:pathData="M47,47.5 m-2.8,0 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0"
+        android:fillColor="#FF38BDF8" />
+    <path
+        android:pathData="M61,56.5 m-2.8,0 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0"
+        android:fillColor="#FFA855F7" />
+
+    <!-- Musical Eighth Note Badge at Bottom of Pick -->
+    <path
+        android:pathData="M55.5,67 L55.5,76 M55.5,67 L60.5,68.5 L60.5,71 L55.5,69.5"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeColor="#FFFBBF24" />
+    <path
+        android:pathData="M53.2,76.2 m-2.6,0 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0"
+        android:fillColor="#FFFBBF24" />
+</vector>
