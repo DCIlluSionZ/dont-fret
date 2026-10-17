@@ -9,7 +9,7 @@ import pytest
 from onnx import TensorProto, helper, numpy_helper
 
 from app.analysis.features import CQT_HOP_LENGTH, extract_log_cqt
-from app.analysis.onnx_engine import OnnxChordEngine, OnnxModelError
+from app.analysis.onnx_engine import OnnxChordEngine, OnnxModelError, _labels_from_config
 
 
 def _write_constant_model(path: Path) -> None:
@@ -105,3 +105,26 @@ def test_onnx_engine_rejects_missing_model_instead_of_falling_back(tmp_path: Pat
             model_path=tmp_path / "missing.onnx",
             config_path=config_path,
         )
+
+
+
+def test_chordmini_class_notation_is_guitar_friendly_without_changing_indices() -> None:
+    config = {
+        "idx_to_chord": {
+            "0": "C:maj",
+            "1": "A:min",
+            "2": "Db:min7",
+            "3": "G:hdim7",
+            "4": "F:7",
+            "5": "N",
+        }
+    }
+    assert _labels_from_config(config) == ("C", "Am", "Dbm7", "Gm7b5", "F7", "N")
+
+
+def test_unknown_qualities_remain_visible_instead_of_fabricated() -> None:
+    assert _labels_from_config({"labels": ["C:experimental", "D:aug", "A#:min"]}) == (
+        "C:experimental",
+        "Daug",
+        "A#m",
+    )

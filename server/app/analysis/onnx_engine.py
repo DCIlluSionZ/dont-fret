@@ -34,20 +34,50 @@ def _lookup(config: dict[str, Any], names: tuple[str, ...], default: Any = None)
     return default
 
 
+_STANDARD_QUALITIES = {
+    "maj": "",
+    "min": "m",
+    "maj7": "maj7",
+    "min7": "m7",
+    "7": "7",
+    "dim": "dim",
+    "dim7": "dim7",
+    "hdim7": "m7b5",
+    "aug": "aug",
+    "sus2": "sus2",
+    "sus4": "sus4",
+    "5": "5",
+}
+
+
+def _guitar_chord_label(model_label: str) -> str:
+    """Convert ChordMini root:quality classes to conventional guitar symbols."""
+    if ":" not in model_label:
+        return model_label
+    root, quality = model_label.split(":", 1)
+    if root not in {
+        "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb",
+        "G", "G#", "Ab", "A", "A#", "Bb", "B",
+    }:
+        return model_label
+    suffix = _STANDARD_QUALITIES.get(quality)
+    return root + suffix if suffix is not None else model_label
+
+
 def _labels_from_config(config: dict[str, Any]) -> tuple[str, ...]:
     raw = _lookup(
         config,
         ("labels", "vocabulary", "chordLabels", "idxToChord", "idx_to_chord"),
     )
     if isinstance(raw, list) and raw and all(isinstance(item, str) for item in raw):
-        return tuple(raw)
+        return tuple(_guitar_chord_label(label) for label in raw)
     if isinstance(raw, dict) and raw:
         try:
             ordered = sorted(((int(key), str(value)) for key, value in raw.items()), key=lambda item: item[0])
         except (TypeError, ValueError):
             ordered = []
-        if ordered and ordered[0][0] == 0:
-            return tuple(value for _, value in ordered)
+        if ordered and [index for index, _ in ordered] == list(range(len(ordered))):
+            return tuple(_guitar_chord_label(value) for _, value in ordered)
     raise OnnxModelError("Chord model config does not contain an indexed label vocabulary")
 
 
