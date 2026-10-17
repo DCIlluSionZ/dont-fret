@@ -1,0 +1,52 @@
+name: Independent Don't Fret ONNX Audit
+on:
+  push:
+    branches:
+      - tahlia/dont-fret-audit-20261018
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-model-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Install server and test dependencies
+        run: python -m pip install -e 'server[dev]'
+      - name: Run regression suite
+        run: cd server && pytest -q
+      - name: Download pinned, hash-verified research model
+        run: python server/scripts/fetch_research_model.py --destination /tmp/dont-fret-audit-model --i-understand-provenance-unknown
+      - name: Measure real ONNX on synthetic chord progression
+        run: |
+          cd server
+          python scripts/audit_real_model.py --model /tmp/dont-fret-audit-model/chordnet.onnx --config /tmp/dont-fret-audit-model/config.json
+
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: cd web && npm install
+      - name: Run unit tests
+        run: cd web && npm test
+      - name: Install test browser
+        run: cd web && npx playwright install --with-deps chromium
+      - name: Run browser journey
+        run: cd web && npm run e2e
+      - name: Production build
+        run: cd web && npm run build
