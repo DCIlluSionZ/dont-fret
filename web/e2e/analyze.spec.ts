@@ -67,7 +67,7 @@ test("upload to sheet, easy guitar, correction and follow position", async ({ pa
   await expect(page.getByText("Needs review")).toBeVisible();
 
   await page.getByRole("button", { name: "Easy Guitar" }).click();
-  await expect(page.getByText(/Capo 3/)).toBeVisible();
+  await expect(page.getByText("Capo 3", { exact: true })).toBeVisible();
   await expect(page.getByTestId("chord-0")).toHaveText(/G/);
   await expect(page.getByTestId("chord-1")).toHaveText(/C/);
   await expect(page.getByTestId("chord-2")).toHaveText(/D/);
