@@ -23,3 +23,10 @@ server/models/
 server/.venv/
 web/node_modules/
 web/.next/
+
+# Research-only model downloads, local runtime state and browser traces
+/models/
+/server/models/
+/server/jobs/
+/web/test-results/
+/web/playwright-report/
