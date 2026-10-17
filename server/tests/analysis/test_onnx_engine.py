@@ -128,3 +128,15 @@ def test_unknown_qualities_remain_visible_instead_of_fabricated() -> None:
         "Daug",
         "A#m",
     )
+
+
+
+def test_real_chordmini_chord_vocab_contract_and_extended_quality_labels() -> None:
+    """The published 170-class config uses chordVocab, not labels."""
+    config = {
+        "modelType": "chordmini-chordnet-2e1d",
+        "chordVocab": ["C:min", "C", "A:min6", "D:maj6", "F:minmaj7", "X", "N"],
+    }
+    assert _labels_from_config(config) == (
+        "Cm", "C", "Am6", "D6", "Fm(maj7)", "X", "N"
+    )

@@ -66,7 +66,6 @@ def main() -> int:
     parser.add_argument("--config", type=Path, required=True)
     args = parser.parse_args()
 
-    print("VERIFIED_MODEL_CONFIG_JSON=" + args.config.read_text(encoding="utf-8"), flush=True)
     engine = OnnxChordEngine(model_path=args.model, config_path=args.config)
     audio = synthesize()
     evidence = engine.analyze(audio, SR)

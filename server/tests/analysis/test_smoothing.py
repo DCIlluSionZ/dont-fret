@@ -85,3 +85,20 @@ def test_estimate_beat_grid_finds_synthetic_120_bpm_pulses() -> None:
 
 
 import pytest
+
+
+
+def test_unknown_x_label_is_preserved_as_raw_but_never_displayed_as_a_chord() -> None:
+    grid = BeatGrid(beat_times=(0.0, 0.5, 1.0), bpm=120.0)
+    evidence = FrameChordEvidence(
+        frames=(
+            ChordFrame(0.0, 0.5, "X", 0.99, -10.0),
+            ChordFrame(0.5, 1.0, "X", 0.99, -10.0),
+        ),
+        engine_version="real-model-vocab",
+    )
+    segments = smooth_to_beats(evidence, grid)
+    assert len(segments) == 1
+    assert segments[0].chord == "N"
+    assert segments[0].raw_chord == "X"
+    assert segments[0].is_low_confidence is True

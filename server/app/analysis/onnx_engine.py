@@ -38,6 +38,9 @@ _STANDARD_QUALITIES = {
     "maj": "",
     "min": "m",
     "maj7": "maj7",
+    "min6": "m6",
+    "maj6": "6",
+    "minmaj7": "m(maj7)",
     "min7": "m7",
     "7": "7",
     "dim": "dim",
@@ -67,7 +70,7 @@ def _guitar_chord_label(model_label: str) -> str:
 def _labels_from_config(config: dict[str, Any]) -> tuple[str, ...]:
     raw = _lookup(
         config,
-        ("labels", "vocabulary", "chordLabels", "idxToChord", "idx_to_chord"),
+        ("labels", "vocabulary", "chordLabels", "chordVocab", "idxToChord", "idx_to_chord"),
     )
     if isinstance(raw, list) and raw and all(isinstance(item, str) for item in raw):
         return tuple(_guitar_chord_label(label) for label in raw)

@@ -60,7 +60,7 @@ def _quantize_beat(
         frame.rms_db is not None and frame.rms_db <= settings.quiet_rms_db_threshold
         for frame in selected
     )
-    low = confidence < settings.confidence_threshold or is_quiet
+    low = confidence < settings.confidence_threshold or is_quiet or raw in {"X", "N"}
     return _BeatEvidence(
         chord="N" if low else raw,
         raw_chord=raw,
