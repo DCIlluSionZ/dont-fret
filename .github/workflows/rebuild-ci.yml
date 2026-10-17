@@ -43,6 +43,9 @@ jobs:
       - name: Install web dependencies
         if: ${{ hashFiles('web/package.json') != '' }}
         run: cd web && npm install
+      - name: Run web tests
+        if: ${{ hashFiles('web/package.json') != '' }}
+        run: cd web && npm test
       - name: Build web app
         if: ${{ hashFiles('web/package.json') != '' }}
         run: cd web && npm run build
