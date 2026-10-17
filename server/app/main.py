@@ -11,6 +11,8 @@ from fastapi import FastAPI
 from app.config import Settings
 from app.hq.separation import DemucsCliSeparator
 from app.jobs.store import JobStore
+from app.projects.store import ProjectStore
+from app.routes.projects import router as projects_router
 from app.routes.analyze import DEFAULT_MAX_UPLOAD_BYTES, router as analyze_router
 
 
@@ -60,8 +62,10 @@ def create_app(
     application.state.analysis_engine = analysis_engine
     application.state.stem_separator = configured_separator
     application.state.job_store = store
+    application.state.project_store = ProjectStore(configured_root / "projects")
     application.state.max_upload_bytes = max_upload_bytes
     application.include_router(analyze_router)
+    application.include_router(projects_router)
 
     @application.get("/api/health")
     def health() -> dict[str, str]:
