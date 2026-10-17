@@ -46,6 +46,9 @@ jobs:
       - name: Run web tests
         if: ${{ hashFiles('web/package.json') != '' }}
         run: cd web && npm test
+      - name: Run browser flow
+        if: ${{ hashFiles('web/package.json') != '' }}
+        run: cd web && npm run e2e
       - name: Build web app
         if: ${{ hashFiles('web/package.json') != '' }}
         run: cd web && npm run build
