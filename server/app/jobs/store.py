@@ -13,6 +13,13 @@ class JobQueueFull(RuntimeError):
     """Raised when the bounded analysis queue has no capacity."""
 
 
+def _is_canonical_job_id(job_id: str) -> bool:
+    try:
+        return str(uuid.UUID(job_id)) == job_id
+    except (ValueError, AttributeError, TypeError):
+        return False
+
+
 class JobStore:
     def __init__(
         self,
@@ -46,6 +53,8 @@ class JobStore:
         return job_id
 
     def job_dir(self, job_id: str) -> Path:
+        if not _is_canonical_job_id(job_id):
+            raise ValueError("invalid job id")
         return self.root / job_id
 
     def get(self, job_id: str) -> dict[str, Any] | None:
@@ -53,6 +62,8 @@ class JobStore:
             record = self._records.get(job_id)
             if record is not None:
                 return deepcopy(record)
+            if not _is_canonical_job_id(job_id):
+                return None
             path = self.job_dir(job_id) / "job.json"
             if not path.is_file():
                 return None
