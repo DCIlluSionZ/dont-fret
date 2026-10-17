@@ -4,6 +4,36 @@
   "title": "Don't Fret Analysis Result",
   "type": "object",
   "required": ["schemaVersion", "track", "analysis", "chords"],
+  "$defs": {
+    "chordSegment": {
+      "type": "object",
+      "required": [
+        "startSec",
+        "endSec",
+        "chord",
+        "confidence",
+        "beatStart",
+        "beatCount",
+        "barStart",
+        "isLowConfidence",
+        "rawChord",
+        "correctedChord"
+      ],
+      "properties": {
+        "startSec": { "type": "number", "minimum": 0 },
+        "endSec": { "type": "number", "exclusiveMinimum": 0 },
+        "chord": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "beatStart": { "type": "integer", "minimum": 0 },
+        "beatCount": { "type": "integer", "minimum": 1 },
+        "barStart": { "type": "integer", "minimum": 0 },
+        "isLowConfidence": { "type": "boolean" },
+        "rawChord": { "type": "string", "minLength": 1 },
+        "correctedChord": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    }
+  },
   "properties": {
     "schemaVersion": { "const": "dont-fret.analysis.v1" },
     "track": {
@@ -21,7 +51,7 @@
       "properties": {
         "sampleRate": { "const": 22050 },
         "mode": { "enum": ["normal", "hq"] },
-        "engineVersion": { "type": "string" },
+        "engineVersion": { "type": "string", "minLength": 1 },
         "bpm": { "type": ["number", "null"] },
         "key": { "type": ["string", "null"] },
         "keyConfidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
@@ -30,7 +60,7 @@
     },
     "chords": {
       "type": "array",
-      "items": { "type": "object" }
+      "items": { "$ref": "#/$defs/chordSegment" }
     }
   },
   "additionalProperties": true
