@@ -1,0 +1,57 @@
+name: Don't Fret Web Rebuild CI
+
+on:
+  push:
+    branches:
+      - tahlia/chordsonic-web-rebuild
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: server/pyproject.toml
+      - name: Install FFmpeg
+        if: ${{ hashFiles('server/pyproject.toml') != '' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Install server dependencies
+        if: ${{ hashFiles('server/pyproject.toml') != '' }}
+        run: python -m pip install -e 'server[dev]'
+      - name: Run server tests
+        if: ${{ hashFiles('server/pyproject.toml') != '' }}
+        run: cd server && pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install web dependencies
+        if: ${{ hashFiles('web/package.json') != '' }}
+        run: cd web && npm install
+      - name: Run web unit tests
+        if: ${{ hashFiles('web/package.json') != '' }}
+        run: cd web && npm test
+      - name: Install Playwright Chromium
+        if: ${{ hashFiles('web/playwright.config.ts') != '' }}
+        run: cd web && npx playwright install --with-deps chromium
+      - name: Run browser flow
+        if: ${{ hashFiles('web/playwright.config.ts') != '' }}
+        run: cd web && npm run e2e
+      - name: Build web app
+        if: ${{ hashFiles('web/package.json') != '' }}
+        run: cd web && npm run build

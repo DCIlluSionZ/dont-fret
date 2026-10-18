@@ -16,3 +16,17 @@
 local.properties
 .env
 debug.keystore
+
+# Don't Fret web rebuild runtime/model artifacts
+server/models/
+*.onnx
+server/.venv/
+web/node_modules/
+web/.next/
+
+# Research-only model downloads, local runtime state and browser traces
+/models/
+/server/models/
+/server/jobs/
+/web/test-results/
+/web/playwright-report/
