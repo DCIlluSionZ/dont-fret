@@ -8,7 +8,7 @@ import { createProject, fetchJob, getProject, saveCorrections, uploadTrack } fro
 import { exportAnalysisJson, exportChordSheetText, exportChordsCsv } from "../../lib/exports";
 import type { AnalysisMode, AnalysisResult } from "../../lib/api";
 import { rankCapoOptions } from "../../lib/music/capo";
-import { transposeChord } from "../../lib/music/chords";
+import { simplifyChordVoicing, transposeChord, type VoicingTier } from "../../lib/music/chords";
 import "./analyze.css";
 
 type Phase = "idle" | "uploading" | "analysing" | "complete" | "failed";
@@ -36,6 +36,8 @@ export default function AnalyzePage() {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [corrections, setCorrections] = useState<Record<number, string>>({});
   const [easy, setEasy] = useState(false);
+  const [voicingTier, setVoicingTier] = useState<VoicingTier>("advanced");
+  const [transposeSemitones, setTransposeSemitones] = useState(0);
   const [view, setView] = useState<View>("sheet");
   const [position, setPosition] = useState(0);
   const [editing, setEditing] = useState<number | null>(null);
@@ -82,13 +84,22 @@ export default function AnalyzePage() {
     () => result?.chords.map((_, index) => soundingLabel(result, index, corrections)) ?? [],
     [result, corrections],
   );
+  const transposedSoundingChords = useMemo(
+    () => rawChords.map((chord) => (transposeSemitones !== 0 ? transposeChord(chord, transposeSemitones) : chord)),
+    [rawChords, transposeSemitones],
+  );
   const recommendedCapo = useMemo(
-    () => rankCapoOptions(rawChords.filter((chord) => chord !== "N"))[0] ?? null,
-    [rawChords],
+    () => rankCapoOptions(transposedSoundingChords.filter((chord) => chord !== "N"))[0] ?? null,
+    [transposedSoundingChords],
   );
   const displayChords = useMemo(
-    () => rawChords.map((chord) => easy && recommendedCapo ? transposeChord(chord, -recommendedCapo.capoFret) : chord),
-    [rawChords, easy, recommendedCapo],
+    () =>
+      transposedSoundingChords.map((chord) => {
+        const capoAdjusted =
+          easy && recommendedCapo ? transposeChord(chord, -recommendedCapo.capoFret) : chord;
+        return simplifyChordVoicing(capoAdjusted, voicingTier);
+      }),
+    [transposedSoundingChords, easy, recommendedCapo, voicingTier],
   );
   const activeIndex = result?.chords.findIndex((chord) => position >= chord.startSec && position < chord.endSec) ?? -1;
   const currentChord = activeIndex >= 0 ? displayChords[activeIndex] : "N";
@@ -123,6 +134,8 @@ export default function AnalyzePage() {
     setCorrections({});
     setPosition(0);
     setEasy(false);
+    setVoicingTier("advanced");
+    setTransposeSemitones(0);
     setView("sheet");
     try {
       const nextJobId = await uploadTrack(file, mode, controller.signal);
@@ -258,6 +271,18 @@ export default function AnalyzePage() {
                 <div className="segmented" aria-label="Chord display">
                   <button type="button" className={!easy ? "selected" : ""} aria-pressed={!easy} onClick={() => setEasy(false)}>Original</button>
                   <button type="button" className={easy ? "selected" : ""} aria-pressed={easy} onClick={() => setEasy(true)}>Easy Guitar</button>
+                </div>
+                <div className="segmented" aria-label="Chord complexity">
+                  <button type="button" className={voicingTier === "advanced" ? "selected" : ""} aria-pressed={voicingTier === "advanced"} onClick={() => setVoicingTier("advanced")}>Full Voicings</button>
+                  <button type="button" className={voicingTier === "medium" ? "selected" : ""} aria-pressed={voicingTier === "medium"} onClick={() => setVoicingTier("medium")}>7ths &amp; Sus</button>
+                  <button type="button" className={voicingTier === "easy" ? "selected" : ""} aria-pressed={voicingTier === "easy"} onClick={() => setVoicingTier("easy")}>Simple Triads</button>
+                </div>
+                <div className="segmented" aria-label="Transpose key">
+                  <button type="button" aria-label="Transpose down" onClick={() => setTransposeSemitones((s) => Math.max(-11, s - 1))}>−</button>
+                  <button type="button" onClick={() => setTransposeSemitones(0)}>
+                    {transposeSemitones === 0 ? "Key 0" : `${transposeSemitones > 0 ? "+" : ""}${transposeSemitones} st`}
+                  </button>
+                  <button type="button" aria-label="Transpose up" onClick={() => setTransposeSemitones((s) => Math.min(11, s + 1))}>+</button>
                 </div>
                 <div className="segmented" aria-label="Sheet navigation">
                   <button type="button" className={view === "sheet" ? "selected" : ""} aria-pressed={view === "sheet"} onClick={() => setView("sheet")}>Sheet</button>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { chordPitchClasses, transposeChord } from "./chords";
+import { chordPitchClasses, simplifyChordVoicing, transposeChord } from "./chords";
 import { rankCapoOptions } from "./capo";
 
 function expectConcertPitchPreserved(
@@ -34,6 +34,29 @@ describe("transposeChord", () => {
   it("can spell transposed roots with flats", () => {
     expect(transposeChord("B", 2, true)).toBe("Db");
     expect(transposeChord("F#7", 4, true)).toBe("Bb7");
+  });
+});
+
+describe("simplifyChordVoicing", () => {
+  it("preserves full extensions and slash inversions in advanced tier", () => {
+    expect(simplifyChordVoicing("D/F#", "advanced")).toBe("D/F#");
+    expect(simplifyChordVoicing("F#m7b5", "advanced")).toBe("F#m7b5");
+    expect(simplifyChordVoicing("Fm(maj7)", "advanced")).toBe("Fm(maj7)");
+  });
+
+  it("keeps 7ths and sus chords while simplifying exotic extensions in medium tier", () => {
+    expect(simplifyChordVoicing("Cmaj7", "medium")).toBe("Cmaj7");
+    expect(simplifyChordVoicing("Dsus4", "medium")).toBe("Dsus4");
+    expect(simplifyChordVoicing("Fm(maj7)", "medium")).toBe("Fm");
+    expect(simplifyChordVoicing("F#m7b5", "medium")).toBe("F#dim");
+    expect(simplifyChordVoicing("D/F#", "medium")).toBe("D/F#");
+  });
+
+  it("reduces extended and slash chords to open-friendly triads in easy tier", () => {
+    expect(simplifyChordVoicing("Cmaj7", "easy")).toBe("C");
+    expect(simplifyChordVoicing("Am7/G", "easy")).toBe("Am");
+    expect(simplifyChordVoicing("Dsus4", "easy")).toBe("D");
+    expect(simplifyChordVoicing("F#m7b5", "easy")).toBe("F#dim");
   });
 });
 

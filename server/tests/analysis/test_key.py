@@ -26,3 +26,14 @@ def test_infer_key_prefers_c_major_for_c_am_f_g_progression() -> None:
 
     assert estimate.name == "C major"
     assert 0.0 < estimate.confidence <= 1.0
+
+
+def test_infer_key_uses_dominant_seventh_to_disambiguate_tonic() -> None:
+    """Between C and G major, a G7 dominant chord resolves ambiguity toward C major."""
+    estimate = infer_key([
+        _segment(0, "C"),
+        _segment(1, "G7"),
+    ])
+
+    assert estimate.name == "C major"
+    assert estimate.confidence > 0.1

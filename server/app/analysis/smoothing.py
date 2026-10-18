@@ -98,8 +98,8 @@ def _remove_bridge_glitches(beats: list[_BeatEvidence], minimum: int) -> list[_B
             if end - start >= minimum or chord == "N":
                 continue
             if 0 < run_index < len(runs) - 1:
-                left = runs[run_index - 1][2]
-                right = runs[run_index + 1][2]
+                left_start, left_end, left = runs[run_index - 1]
+                right_start, right_end, right = runs[run_index + 1]
                 if left == right and left != "N":
                     for index in range(start, end):
                         beat = cleaned[index]
@@ -109,6 +109,32 @@ def _remove_bridge_glitches(beats: list[_BeatEvidence], minimum: int) -> list[_B
                             confidence=beat.confidence,
                             low_confidence=beat.low_confidence,
                         )
+                    changed = True
+                    break
+                # Capo / HMM transition rule: absorb a 1-beat low-confidence transition
+                # glitch (e.g. D -> Bm(1 beat, conf=0.41) -> G) into the stronger adjacent
+                # stable chord while preserving raw_chord for auditability.
+                if (
+                    end - start == 1
+                    and cleaned[start].low_confidence
+                    and left != "N"
+                    and right != "N"
+                    and (left_end - left_start >= minimum or right_end - right_start >= minimum)
+                ):
+                    left_conf = sum(cleaned[i].confidence for i in range(left_start, left_end)) / (
+                        left_end - left_start
+                    )
+                    right_conf = sum(cleaned[i].confidence for i in range(right_start, right_end)) / (
+                        right_end - right_start
+                    )
+                    replacement = left if left_conf >= right_conf else right
+                    beat = cleaned[start]
+                    cleaned[start] = _BeatEvidence(
+                        chord=replacement,
+                        raw_chord=beat.raw_chord,
+                        confidence=beat.confidence,
+                        low_confidence=True,
+                    )
                     changed = True
                     break
     return cleaned

@@ -43,7 +43,7 @@ _MINOR_QUALITIES = ("minor", "diminished", "major", "minor", "major", "major", "
 _DEGREE_WEIGHTS = (2.2, 1.0, 1.0, 1.4, 1.8, 1.0, 0.7)
 
 
-def _parse(chord: str) -> tuple[int, str] | None:
+def _parse(chord: str) -> tuple[int, str, str] | None:
     if chord in {"N", "?", ""}:
         return None
     head = chord.split("/", 1)[0].strip()
@@ -55,24 +55,35 @@ def _parse(chord: str) -> tuple[int, str] | None:
     if root is None:
         return None
     suffix = match.group(3).lower()
-    if "dim" in suffix or "°" in suffix:
+    if "m7b5" in suffix or "hdim" in suffix or "ø" in suffix:
         quality = "diminished"
+        extension = "hdim7"
+    elif "dim" in suffix or "°" in suffix:
+        quality = "diminished"
+        extension = "dim"
     elif suffix.startswith("m") and not suffix.startswith("maj"):
         quality = "minor"
+        extension = "min7" if "7" in suffix else "minor"
     else:
         quality = "major"
-    return root, quality
+        if "maj7" in suffix:
+            extension = "maj7"
+        elif suffix == "7" or suffix.startswith("7") or suffix == "9":
+            extension = "dom7"
+        else:
+            extension = "major"
+    return root, quality, extension
 
 
 def infer_key(chord_segments: list[ChordSegment]) -> KeyEstimate:
-    evidence: list[tuple[int, str, float]] = []
+    evidence: list[tuple[int, str, str, float]] = []
     for segment in chord_segments:
         parsed = _parse(segment.chord)
         if parsed is None or segment.is_low_confidence:
             continue
-        root, quality = parsed
+        root, quality, extension = parsed
         weight = max(1, segment.beat_count) * max(0.05, segment.confidence)
-        evidence.append((root, quality, weight))
+        evidence.append((root, quality, extension, weight))
 
     if not evidence:
         return KeyEstimate(name=None, confidence=0.0)
@@ -84,10 +95,27 @@ def infer_key(chord_segments: list[ChordSegment]) -> KeyEstimate:
             ("minor", _MINOR_INTERVALS, _MINOR_QUALITIES),
         ):
             score = 0.0
-            for chord_root, chord_quality, evidence_weight in evidence:
+            for chord_root, chord_quality, extension, evidence_weight in evidence:
                 for degree, (interval, expected_quality) in enumerate(zip(intervals, qualities, strict=True)):
                     if chord_root == (tonic + interval) % 12 and chord_quality == expected_quality:
-                        score += evidence_weight * _DEGREE_WEIGHTS[degree]
+                        degree_weight = _DEGREE_WEIGHTS[degree]
+                        # Functional 7th-chord disambiguation:
+                        # - Dominant 7th strongly resolves to tonic when on V (degree 4).
+                        # - Major 7th is diatonic on I/IV in major (degrees 0, 3) and bIII/bVI in minor (degrees 2, 5).
+                        if extension == "dom7":
+                            if degree == 4:
+                                degree_weight += 0.65
+                            elif mode == "minor" and degree == 6:
+                                degree_weight += 0.25
+                        elif extension == "maj7":
+                            if (mode == "major" and degree in {0, 3}) or (mode == "minor" and degree in {2, 5}):
+                                degree_weight += 0.40
+                            elif degree == 4:
+                                degree_weight -= 0.35
+                        elif extension == "hdim7":
+                            if (mode == "major" and degree == 6) or (mode == "minor" and degree == 1):
+                                degree_weight += 0.45
+                        score += evidence_weight * degree_weight
                         break
             scores.append((score, tonic, mode))
 

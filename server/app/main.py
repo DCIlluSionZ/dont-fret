@@ -9,7 +9,7 @@ from typing import Any, AsyncIterator
 from fastapi import FastAPI
 
 from app.config import Settings
-from app.hq.separation import DemucsCliSeparator
+from app.hq.separation import DemucsCliSeparator, HpssHarmonicSeparator
 from app.jobs.store import JobStore
 from app.projects.store import ProjectStore
 from app.routes.projects import router as projects_router
@@ -46,6 +46,8 @@ def create_app(
                 command=settings.demucs_command,
                 model_name=settings.demucs_model,
             )
+        else:
+            configured_separator = HpssHarmonicSeparator()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:

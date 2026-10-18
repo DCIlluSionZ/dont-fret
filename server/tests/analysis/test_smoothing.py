@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from app.analysis.beats import BeatGrid, estimate_beat_grid
 from app.analysis.smoothing import SmoothingSettings, smooth_to_beats
@@ -84,10 +85,6 @@ def test_estimate_beat_grid_finds_synthetic_120_bpm_pulses() -> None:
     assert grid.beats_per_bar == 4
 
 
-import pytest
-
-
-
 def test_unknown_x_label_is_preserved_as_raw_but_never_displayed_as_a_chord() -> None:
     grid = BeatGrid(beat_times=(0.0, 0.5, 1.0), bpm=120.0)
     evidence = FrameChordEvidence(
@@ -102,6 +99,7 @@ def test_unknown_x_label_is_preserved_as_raw_but_never_displayed_as_a_chord() ->
     assert segments[0].chord == "N"
     assert segments[0].raw_chord == "X"
     assert segments[0].is_low_confidence is True
+
 
 def test_default_preserves_two_beat_g_between_d_chords() -> None:
     """Two-beat pickup chords are musical changes, not bridge glitches."""
@@ -153,3 +151,17 @@ def test_one_beat_bridge_glitch_is_still_removed() -> None:
     segments = smooth_to_beats(evidence, grid)
     assert [s.chord for s in segments] == ["D"]
     assert segments[0].raw_chord == "D"
+
+
+def test_one_beat_low_confidence_transition_glitch_between_different_chords_is_absorbed() -> None:
+    """A 1-beat low-confidence passing glitch (e.g. D -> Bm(0.41) -> G) is absorbed into the stronger neighbor."""
+    frames = (
+        *(_frame(i, "D", confidence=0.92) for i in range(0, 4)),
+        _frame(4, "Bm", confidence=0.41),
+        *(_frame(i, "G", confidence=0.88) for i in range(5, 9)),
+    )
+    evidence = FrameChordEvidence(frames=frames, engine_version="fixture-v1")
+    grid = BeatGrid(tuple(i * 0.5 for i in range(10)), bpm=120)
+    segments = smooth_to_beats(evidence, grid)
+    assert [s.chord for s in segments] == ["D", "G"]
+    assert [s.beat_count for s in segments] == [5, 4]

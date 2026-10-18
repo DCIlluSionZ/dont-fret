@@ -6,6 +6,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+import librosa
+import numpy as np
+import soundfile as sf
+
+from app.audio.decode import CANONICAL_SAMPLE_RATE, decode_audio
+
 
 class StemSeparationError(RuntimeError):
     """Raised when an HQ separator cannot produce usable harmonic stems."""
@@ -33,6 +39,79 @@ class StemSet:
 class StemSeparator(Protocol):
     def separate(self, source_path: Path, output_dir: Path) -> StemSet:
         ...
+
+
+@dataclass(frozen=True, slots=True)
+class HpssHarmonicSeparator:
+    """Built-in harmonic-percussive + bass/midrange separator using librosa HPSS.
+
+    Provides zero-dependency HQ harmonic isolation (suppressing broadband drum transients
+    and isolating bass fundamentals < 260 Hz from upper harmonic structure) when an
+    external Demucs worker is not installed.
+    """
+
+    margin_harmonic: float = 1.2
+    margin_percussive: float = 4.0
+    bass_cutoff_hz: float = 260.0
+    model_name: str = "librosa-hpss-bass-harmonic"
+
+    def separate(self, source_path: Path, output_dir: Path) -> StemSet:
+        source_path = Path(source_path)
+        output_dir = Path(output_dir)
+        if not source_path.is_file():
+            raise StemSeparationError(f"source audio not found: {source_path.name}")
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        decoded_path = output_dir / "canonical_input.wav"
+        try:
+            decode_audio(source_path, decoded_path)
+            samples, sample_rate = sf.read(decoded_path, dtype="float32", always_2d=False)
+            samples = np.asarray(samples, dtype=np.float32)
+            if samples.ndim != 1 or samples.size == 0:
+                raise StemSeparationError("decoded audio for HPSS separation is empty")
+
+            stft = librosa.stft(samples, n_fft=2048, hop_length=512)
+            harmonic_stft, percussive_stft = librosa.decompose.hpss(
+                stft,
+                margin=(self.margin_harmonic, self.margin_percussive),
+            )
+            freqs = librosa.fft_frequencies(sr=int(sample_rate), n_fft=2048)
+            bass_mask = (freqs <= self.bass_cutoff_hz)[:, np.newaxis]
+            other_mask = (freqs > 90.0)[:, np.newaxis]
+
+            bass_audio = librosa.istft(
+                harmonic_stft * bass_mask,
+                hop_length=512,
+                length=samples.size,
+            ).astype(np.float32)
+            other_audio = librosa.istft(
+                harmonic_stft * other_mask,
+                hop_length=512,
+                length=samples.size,
+            ).astype(np.float32)
+            drums_audio = librosa.istft(
+                percussive_stft,
+                hop_length=512,
+                length=samples.size,
+            ).astype(np.float32)
+
+            bass_path = output_dir / "bass.wav"
+            other_path = output_dir / "other.wav"
+            drums_path = output_dir / "drums.wav"
+            sf.write(bass_path, bass_audio, CANONICAL_SAMPLE_RATE, subtype="FLOAT")
+            sf.write(other_path, other_audio, CANONICAL_SAMPLE_RATE, subtype="FLOAT")
+            sf.write(drums_path, drums_audio, CANONICAL_SAMPLE_RATE, subtype="FLOAT")
+        except StemSeparationError:
+            raise
+        except Exception as exc:
+            raise StemSeparationError(f"HPSS harmonic separation failed: {exc}") from exc
+
+        return StemSet(
+            bass=bass_path,
+            other=other_path,
+            drums=drums_path,
+            model_name=self.model_name,
+        )
 
 
 @dataclass(frozen=True, slots=True)
