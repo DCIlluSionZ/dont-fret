@@ -102,3 +102,54 @@ def test_unknown_x_label_is_preserved_as_raw_but_never_displayed_as_a_chord() ->
     assert segments[0].chord == "N"
     assert segments[0].raw_chord == "X"
     assert segments[0].is_low_confidence is True
+
+def test_default_preserves_two_beat_g_between_d_chords() -> None:
+    """Two-beat pickup chords are musical changes, not bridge glitches."""
+    labels = ["D"] * 4 + ["G"] * 2 + ["D"] * 4 + ["C"] * 2
+    evidence = FrameChordEvidence(
+        frames=tuple(_frame(i, ch) for i, ch in enumerate(labels)),
+        engine_version="fixture-v1",
+    )
+    grid = BeatGrid(tuple(i * .5 for i in range(len(labels) + 1)), bpm=120)
+    segments = smooth_to_beats(evidence, grid)
+    assert [s.chord for s in segments] == ["D", "G", "D", "C"]
+    assert [s.beat_count for s in segments] == [4, 2, 4, 2]
+
+
+def test_medium_confidence_keeps_candidate_but_marks_it_for_review() -> None:
+    """A 0.42 candidate should be editable, not concealed as N or confidently trusted."""
+    grid = BeatGrid((0.0, 0.5, 1.0), bpm=120)
+    evidence = FrameChordEvidence(
+        frames=tuple(_frame(i, "G", confidence=0.42) for i in range(2)),
+        engine_version="fixture-v1",
+    )
+    segments = smooth_to_beats(evidence, grid)
+    assert len(segments) == 1
+    assert segments[0].chord == "G"
+    assert segments[0].raw_chord == "G"
+    assert segments[0].is_low_confidence is True
+
+
+def test_low_confidence_candidate_remains_unknown() -> None:
+    grid = BeatGrid((0.0, 0.5, 1.0), bpm=120)
+    evidence = FrameChordEvidence(
+        frames=tuple(_frame(i, "G", confidence=0.32) for i in range(2)),
+        engine_version="fixture-v1",
+    )
+    segments = smooth_to_beats(evidence, grid)
+    assert len(segments) == 1
+    assert segments[0].chord == "N"
+    assert segments[0].raw_chord == "G"
+    assert segments[0].is_low_confidence is True
+
+
+def test_one_beat_bridge_glitch_is_still_removed() -> None:
+    labels = ["D"] * 4 + ["G"] + ["D"] * 4
+    evidence = FrameChordEvidence(
+        frames=tuple(_frame(i, ch) for i, ch in enumerate(labels)),
+        engine_version="fixture-v1",
+    )
+    grid = BeatGrid(tuple(i * .5 for i in range(len(labels) + 1)), bpm=120)
+    segments = smooth_to_beats(evidence, grid)
+    assert [s.chord for s in segments] == ["D"]
+    assert segments[0].raw_chord == "D"
