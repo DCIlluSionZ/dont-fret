@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Opt-in hash-verified model download. Upstream training-data provenance is unknown."""
+"""Opt-in hash-verified model download from immutable verified Hub revision. Research only."""
 from __future__ import annotations
 
 import argparse
@@ -10,10 +10,10 @@ import urllib.request
 from pathlib import Path
 
 FILES = {
-    "chordnet.onnx": ("cfe7703434ebd1c28ba2ded6601581ab41d8f7d1b40f285110445460e1b11154", 17080918),
+    "chordnet.onnx": ("1faee8e1cf168300afe0f47517e76836ac200c3841b0fb430fad7dfea5ad6394", 17080550),
     "config.json": ("1f26c11ebea51ec08f12e813eb213a729fa0ecc407ac7632dfdc7bad67e65aa4", 3009),
 }
-BASE_URL = "https://huggingface.co/musetric/chordmini-onnx/resolve/main/"
+BASE_URL = "https://huggingface.co/musetric/chordmini-onnx/resolve/8ab85fc0f61439900cd07ac21257a43eac57075c/"
 
 
 def fetch_model_file(root: Path, name: str, expected_hash: str, expected_size: int) -> None:
@@ -37,7 +37,11 @@ def fetch_model_file(root: Path, name: str, expected_hash: str, expected_size: i
                 size += len(block)
                 digest.update(block)
         if size != expected_size or digest.hexdigest() != expected_hash:
-            raise ValueError("Model artifact changed. Verify the source before approving a new checksum: " + name)
+            raise ValueError(
+                f"Model artifact rejected for {name}: expected {expected_size} bytes / "
+                f"{expected_hash}, received {size} bytes / {digest.hexdigest()}. "
+                "No artifact was installed."
+            )
         temp.replace(destination)
         destination.chmod(0o600)
         print("Verified and saved", destination)

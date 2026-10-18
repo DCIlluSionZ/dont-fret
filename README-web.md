@@ -34,7 +34,9 @@ Open http://127.0.0.1:3000/analyze. Web requests under /analysis-api/ proxy to l
 
 No binary weights or secret keys are committed. Without a configured model the API returns HTTP 503 on analysis upload; it does not fabricate chord progressions.
 
-Reference model: https://huggingface.co/musetric/chordmini-onnx. The model card labels it MIT but does not document upstream training-data provenance. Use it for private research, not as a commercially cleared dependency. To download the known artifacts with independent SHA-256 checks:
+Reference model: https://huggingface.co/musetric/chordmini-onnx. The model card labels it MIT but does not document upstream training-data provenance. Use it for private research, not as a commercially cleared dependency. The model card's published ONNX SHA-256 was stale relative to the current Hub repository. On 2026-10-18 the official Hub API metadata at revision `8ab85fc0f61439900cd07ac21257a43eac57075c` independently gave LFS SHA-256 `1faee8e1cf168300afe0f47517e76836ac200c3841b0fb430fad7dfea5ad6394`, size `17,080,550` bytes; the download produced exactly those bytes. This review pins the immutable revision and checks that hash. **Weight integrity is not proof of dataset provenance or chord-recognition accuracy.**
+
+To download those immutable research artifacts with independent SHA-256 checks:
 
 ~~~sh
 python server/scripts/fetch_research_model.py --destination models --i-understand-provenance-unknown

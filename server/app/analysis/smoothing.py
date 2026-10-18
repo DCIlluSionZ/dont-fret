@@ -9,13 +9,19 @@ from app.analysis.types import ChordFrame, ChordSegment, FrameChordEvidence
 
 @dataclass(frozen=True, slots=True)
 class SmoothingSettings:
-    confidence_threshold: float = 0.45
+    # Below 0.40, no chord is shown. Between 0.40 and 0.45, keep the
+    # detected chord visible but flag it for manual review.
+    confidence_threshold: float = 0.40
+    review_confidence_threshold: float = 0.45
     quiet_rms_db_threshold: float = -40.0
-    min_beats_per_chord: int = 4
+    # One-beat bridges may be glitches; two-beat changes are valid music.
+    min_beats_per_chord: int = 2
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.confidence_threshold <= 1.0:
             raise ValueError("confidence_threshold must be between 0 and 1")
+        if not self.confidence_threshold <= self.review_confidence_threshold <= 1.0:
+            raise ValueError("review confidence threshold must be >= display confidence threshold and <= 1")
         if self.min_beats_per_chord <= 0:
             raise ValueError("min_beats_per_chord must be positive")
 
@@ -60,12 +66,13 @@ def _quantize_beat(
         frame.rms_db is not None and frame.rms_db <= settings.quiet_rms_db_threshold
         for frame in selected
     )
-    low = confidence < settings.confidence_threshold or is_quiet
+    unknown = confidence < settings.confidence_threshold or is_quiet or raw in {"X", "N"}
+    needs_review = unknown or confidence < settings.review_confidence_threshold
     return _BeatEvidence(
-        chord="N" if low else raw,
+        chord="N" if unknown else raw,
         raw_chord=raw,
         confidence=confidence,
-        low_confidence=low,
+        low_confidence=needs_review,
     )
 
 
