@@ -1,3 +1,5 @@
+import { DciSignature } from "../components/brand/DciSignature";
+
 const featureCards = [
   ["Hear the real harmony", "Decoded audio, timed chords, beat-aware smoothing and confidence instead of guessed stock progressions."],
   ["Play it your way", "Keep the concert chords or flip to Easy Guitar for capo-friendly shapes that preserve the original sound."],
@@ -8,9 +10,7 @@ export default function HomePage() {
   return (
     <main style={{ minHeight: "100vh", background: "radial-gradient(circle at 18% 12%, #242043 0, #10131d 34%, #090b10 68%)" }}>
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "72px 24px 56px" }}>
-        <div style={{ display: "inline-flex", gap: 8, alignItems: "center", padding: "8px 12px", border: "1px solid #34394a", borderRadius: 999, color: "#d6d9e4", fontSize: 13 }}>
-          DCI Studio Tool · Web rebuild
-        </div>
+        <DciSignature />
         <h1 style={{ fontSize: "clamp(54px, 10vw, 112px)", lineHeight: 0.88, letterSpacing: "-0.07em", margin: "34px 0 24px", maxWidth: 900 }}>
           Don&apos;t Fret.
           <span style={{ display: "block", color: "#b9ff66" }}>Just play it.</span>

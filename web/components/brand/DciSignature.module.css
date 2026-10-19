@@ -1,0 +1,60 @@
+.signature {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border: 1px solid #293b66;
+  border-radius: 14px;
+  background: linear-gradient(100deg, #060a17e8, #0e1733e8, #060a17e8);
+  max-width: 100%;
+}
+.musicMark {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 8px #38bdf846);
+}
+.wordmarkBlock { min-width: 0; }
+.letters {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .06em;
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: .15em;
+  line-height: 1.05;
+}
+.blue { color: #38bdf8; }
+.indigo { color: #818cf8; }
+.purple { color: #a855f7; }
+.underline {
+  height: 2px;
+  width: 90px;
+  max-width: 100%;
+  margin: 5px 0 7px;
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #a855f7);
+  box-shadow: 0 0 7px #818cf88a;
+  border-radius: 4px;
+}
+.catchphrase {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: .015em;
+  line-height: 1.4;
+  font-style: italic;
+  text-transform: none;
+}
+.compact { gap: 9px; padding: 6px 9px; border-color: #293b6680; background: transparent; }
+.compact .musicMark { width: 34px; height: 34px; }
+.compact .letters { font-size: 17px; }
+.compact .underline { height: 2px; width: 58px; margin: 3px 0 4px; }
+.compact .catchphrase { font-size: 10px; letter-spacing: 0; }
+@media (max-width: 590px) {
+  .compact { gap: 6px; padding: 3px; border: 0; }
+  .compact .musicMark { width: 25px; height: 25px; }
+  .compact .letters { font-size: 14px; }
+  .compact .catchphrase { font-size: 9px; max-width: 172px; }
+}
