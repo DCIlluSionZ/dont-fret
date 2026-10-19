@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AudioDropzone } from "../../components/upload/AudioDropzone";
+import { DciSignature } from "../../components/brand/DciSignature";
 import { FollowPlayer } from "../../components/player/FollowPlayer";
 import { ChordSheet } from "../../components/sheet/ChordSheet";
 import { createProject, fetchJob, getProject, saveCorrections, uploadTrack } from "../../lib/api";
@@ -226,7 +227,7 @@ export default function AnalyzePage() {
     <main className="df-workspace">
       <header className="workspace-nav">
         <a className="brand" href="/">DON&apos;T <span>FRET</span><small> / STUDIO</small></a>
-        <span>Hear it · Shape it · Play it</span>
+        <DciSignature compact />
       </header>
       <div className="workspace-intro">
         <div className="step-eyebrow">YOUR SONG / YOUR SHEET</div>

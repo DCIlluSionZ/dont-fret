@@ -52,6 +52,7 @@ test("upload to sheet, easy guitar, correction and follow position", async ({ pa
   });
 
   await page.goto("/analyze");
+  await expect(page.getByText("Designed and coded with intelligence.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Analyse a song" })).toBeVisible();
 
   await page.getByTestId("audio-input").setInputFiles({
